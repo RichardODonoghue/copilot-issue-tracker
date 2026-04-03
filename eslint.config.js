@@ -56,27 +56,6 @@ export default [
       'eqeqeq': ['error', 'always'],
       'no-var': 'error',
       'prefer-const': 'error',
-
-      // JSDoc requirement on functions
-      'require-jsdoc': [
-        'warn',
-        {
-          require: {
-            FunctionDeclaration: true,
-            MethodDefinition: true,
-            ClassDeclaration: true,
-            ArrowFunctionExpression: false,
-          },
-        },
-      ],
-      'valid-jsdoc': [
-        'warn',
-        {
-          requireReturn: false,
-          requireParamDescription: false,
-          requireReturnDescription: false,
-        },
-      ],
     },
   },
   prettierConfig,
