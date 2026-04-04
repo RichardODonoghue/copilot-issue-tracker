@@ -47,29 +47,45 @@ jobs:
       - name: Package macOS distributable
         if: runner.os == 'macOS'
         run: |
-          DMG=$(find build -name "*.dmg" | head -1)
+          mapfile -t dmgs < <(find build -type f -name "*.dmg" | sort)
+          if [ "${#dmgs[@]}" -ne 1 ]; then
+            echo "Expected exactly one .dmg under build/, found ${#dmgs[@]}" >&2
+            printf '%s\n' "${dmgs[@]}" >&2
+            exit 1
+          fi
+          DMG="${dmgs[0]}"
           echo "Packaging: $DMG"
-          cp "$DMG" "copilot-issue-tracker-${{ github.ref_name }}-macos-arm64.dmg"
+          cp "$DMG" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.dmg"
 
-      # Linux: the distributable is a .tar.zst archive created by Electrobun
+      # Linux: filter by copilot-issue-tracker prefix to exclude internal Electrobun
+      # update archives (which use hash-based names and the same .tar.zst extension).
       - name: Package Linux distributable
         if: runner.os == 'Linux'
         run: |
-          TAR=$(find build -name "*.tar.zst" | head -1)
+          mapfile -t tars < <(find build -type f -name "copilot-issue-tracker*.tar.zst" | sort)
+          if [ "${#tars[@]}" -ne 1 ]; then
+            echo "Expected exactly one Linux distributable matching copilot-issue-tracker*.tar.zst under build/, found ${#tars[@]}" >&2
+            printf '%s\n' "${tars[@]}" >&2
+            exit 1
+          fi
+          TAR="${tars[0]}"
           echo "Packaging: $TAR"
-          cp "$TAR" "copilot-issue-tracker-${{ github.ref_name }}-linux-x64.tar.zst"
+          cp "$TAR" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.tar.zst"
 
       # Windows: the distributable is a *-Setup-canary.zip installer package
       - name: Package Windows distributable
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $zip = Get-ChildItem -Path build -Recurse -Filter "*-Setup-canary.zip" |
-            Select-Object -First 1
-          if (-not $zip) { throw "No *-Setup-canary.zip found under build/" }
+          $zips = Get-ChildItem -Path build -Recurse -Filter "*-Setup-canary.zip"
+          if ($zips.Count -ne 1) {
+            Write-Error "Expected exactly one *-Setup-canary.zip under build/, found $($zips.Count)"
+            exit 1
+          }
+          $zip = $zips[0]
           Write-Host "Packaging: $($zip.FullName)"
           Copy-Item $zip.FullName `
-            "copilot-issue-tracker-${{ github.ref_name }}-windows-x64.zip"
+            "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.zip"
 
       - name: Upload distributable
         uses: actions/upload-artifact@v4
