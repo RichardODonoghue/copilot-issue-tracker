@@ -43,6 +43,11 @@ jobs:
       - name: Build application (Electrobun)
         run: bun x electrobun build --env=canary
 
+      # List every file in build/ to aid debugging if a packaging step fails.
+      - name: List build outputs
+        shell: bash
+        run: find build -type f | sort
+
       # macOS: the distributable is a .dmg created by Electrobun.
       # Uses a while-read loop instead of mapfile to stay compatible with the
       # Bash 3.2 shipped on macOS GitHub Actions runners.
@@ -62,8 +67,9 @@ jobs:
           echo "Packaging: $DMG"
           cp "$DMG" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.dmg"
 
-      # Linux: filter by copilot-issue-tracker prefix to exclude internal Electrobun
-      # update archives (which use hash-based names and the same .tar.zst extension).
+      # Linux: Electrobun creates `copilot-issue-tracker-canary-Setup.tar.gz`.
+      # The internal update archive uses a hash-based name with a .tar.zst extension
+      # and is NOT the user-facing distributable — filter it out by matching *Setup.tar.gz.
       # Uses a while-read loop for consistency with the macOS step.
       - name: Package Linux distributable
         if: runner.os == 'Linux'
@@ -71,15 +77,15 @@ jobs:
           tars=()
           while IFS= read -r f; do
             tars+=("$f")
-          done < <(find build -type f -name "copilot-issue-tracker*.tar.zst" | sort)
+          done < <(find build -type f -name "*Setup.tar.gz" | sort)
           if [ "${#tars[@]}" -ne 1 ]; then
-            echo "Expected exactly one Linux distributable matching copilot-issue-tracker*.tar.zst under build/, found ${#tars[@]}" >&2
+            echo "Expected exactly one Linux installer matching *Setup.tar.gz under build/, found ${#tars[@]}" >&2
             printf '%s\n' "${tars[@]}" >&2
             exit 1
           fi
           TAR="${tars[0]}"
           echo "Packaging: $TAR"
-          cp "$TAR" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.tar.zst"
+          cp "$TAR" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz"
 
       # Windows: the distributable is a *-Setup-canary.zip installer package
       - name: Package Windows distributable
