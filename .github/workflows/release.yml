@@ -17,8 +17,6 @@ jobs:
         include:
           - os: macos-latest
             platform: macos-arm64
-          - os: ubuntu-latest
-            platform: linux-x64
           - os: windows-latest
             platform: windows-x64
 
@@ -67,25 +65,7 @@ jobs:
           echo "Packaging: $DMG"
           cp "$DMG" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.dmg"
 
-      # Linux: Electrobun creates `copilot-issue-tracker-canary-Setup.tar.gz`.
-      # The internal update archive uses a hash-based name with a .tar.zst extension
-      # and is NOT the user-facing distributable — filter it out by matching *Setup.tar.gz.
-      # Uses a while-read loop for consistency with the macOS step.
-      - name: Package Linux distributable
-        if: runner.os == 'Linux'
-        run: |
-          tars=()
-          while IFS= read -r f; do
-            tars+=("$f")
-          done < <(find build -type f -name "*Setup.tar.gz" | sort)
-          if [ "${#tars[@]}" -ne 1 ]; then
-            echo "Expected exactly one Linux installer matching *Setup.tar.gz under build/, found ${#tars[@]}" >&2
-            printf '%s\n' "${tars[@]}" >&2
-            exit 1
-          fi
-          TAR="${tars[0]}"
-          echo "Packaging: $TAR"
-          cp "$TAR" "copilot-issue-tracker-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz"
+      # Linux: removed — only macOS and Windows are supported.
 
       # Windows: the distributable is a *-Setup-canary.zip installer package
       - name: Package Windows distributable
