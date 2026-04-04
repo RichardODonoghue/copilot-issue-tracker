@@ -41,23 +41,25 @@ jobs:
       - name: Build application (Electrobun)
         run: bun x electrobun build --env=canary
 
-      # List every file in build/ to aid debugging if a packaging step fails.
+      # Electrobun moves all distributables to artifacts/ in the project root
+      # (default config.build.artifactFolder = "artifacts"), NOT build/.
+      # The files are prefixed with the platform prefix (e.g. canary-macos-arm64-).
       - name: List build outputs
         shell: bash
-        run: find build -type f | sort
+        run: find artifacts -type f | sort
 
-      # macOS: the distributable is a .dmg created by Electrobun.
-      # Uses a while-read loop instead of mapfile to stay compatible with the
-      # Bash 3.2 shipped on macOS GitHub Actions runners.
+      # macOS: Electrobun outputs artifacts/canary-macos-arm64-*.dmg
+      # Uses a while-read loop instead of mapfile to stay compatible with
+      # the Bash 3.2 shipped on macOS GitHub Actions runners.
       - name: Package macOS distributable
         if: runner.os == 'macOS'
         run: |
           dmgs=()
           while IFS= read -r f; do
             dmgs+=("$f")
-          done < <(find build -type f -name "*.dmg" | sort)
+          done < <(find artifacts -type f -name "*.dmg" | sort)
           if [ "${#dmgs[@]}" -ne 1 ]; then
-            echo "Expected exactly one .dmg under build/, found ${#dmgs[@]}" >&2
+            echo "Expected exactly one .dmg under artifacts/, found ${#dmgs[@]}" >&2
             printf '%s\n' "${dmgs[@]}" >&2
             exit 1
           fi
@@ -67,14 +69,14 @@ jobs:
 
       # Linux: removed — only macOS and Windows are supported.
 
-      # Windows: the distributable is a *-Setup-canary.zip installer package
+      # Windows: Electrobun outputs artifacts/canary-win-x64-*Setup*.zip
       - name: Package Windows distributable
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $zips = Get-ChildItem -Path build -Recurse -Filter "*-Setup-canary.zip"
+          $zips = Get-ChildItem -Path artifacts -Recurse -Filter "*Setup*.zip"
           if ($zips.Count -ne 1) {
-            Write-Error "Expected exactly one *-Setup-canary.zip under build/, found $($zips.Count)"
+            Write-Error "Expected exactly one *Setup*.zip under artifacts/, found $($zips.Count)"
             exit 1
           }
           $zip = $zips[0]
