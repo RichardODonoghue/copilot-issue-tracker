@@ -43,11 +43,16 @@ jobs:
       - name: Build application (Electrobun)
         run: bun x electrobun build --env=canary
 
-      # macOS: the distributable is a .dmg created by Electrobun
+      # macOS: the distributable is a .dmg created by Electrobun.
+      # Uses a while-read loop instead of mapfile to stay compatible with the
+      # Bash 3.2 shipped on macOS GitHub Actions runners.
       - name: Package macOS distributable
         if: runner.os == 'macOS'
         run: |
-          mapfile -t dmgs < <(find build -type f -name "*.dmg" | sort)
+          dmgs=()
+          while IFS= read -r f; do
+            dmgs+=("$f")
+          done < <(find build -type f -name "*.dmg" | sort)
           if [ "${#dmgs[@]}" -ne 1 ]; then
             echo "Expected exactly one .dmg under build/, found ${#dmgs[@]}" >&2
             printf '%s\n' "${dmgs[@]}" >&2
@@ -59,10 +64,14 @@ jobs:
 
       # Linux: filter by copilot-issue-tracker prefix to exclude internal Electrobun
       # update archives (which use hash-based names and the same .tar.zst extension).
+      # Uses a while-read loop for consistency with the macOS step.
       - name: Package Linux distributable
         if: runner.os == 'Linux'
         run: |
-          mapfile -t tars < <(find build -type f -name "copilot-issue-tracker*.tar.zst" | sort)
+          tars=()
+          while IFS= read -r f; do
+            tars+=("$f")
+          done < <(find build -type f -name "copilot-issue-tracker*.tar.zst" | sort)
           if [ "${#tars[@]}" -ne 1 ]; then
             echo "Expected exactly one Linux distributable matching copilot-issue-tracker*.tar.zst under build/, found ${#tars[@]}" >&2
             printf '%s\n' "${tars[@]}" >&2
